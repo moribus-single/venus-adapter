@@ -8,20 +8,24 @@ import config from "./config"
 import { deployWithoutParams } from "./helpers"
 
 describe("Venus adapter", function () {
+    let ADAPTER_name: string = config.AdapterVenus.name;
+    
     let signers: SignerWithAddress[];
+    let adapter: AdapterVenus;
 
     before(async function () {
         signers = await ethers.getSigners();
+
+        // Deploying adapter
+        adapter = <AdapterVenus>(await deployWithoutParams(ADAPTER_name));
     });
 
     describe("Lend USDT", function () {
         let vUSDT_addr: string = config.vTokens.vUSDT.address;
         let USDT_addr: string = config.Tokens.USDT.address;
-        let ADAPTER_name: string = config.AdapterVenus.name;
 
         let vUSDT: IVBep20;
         let USDT: IERC20;
-        let adapter: AdapterVenus;
 
         let holderUSDT: SignerWithAddress;
         let holderBalance: BigNumber;
@@ -30,9 +34,6 @@ describe("Venus adapter", function () {
             // Getting contract instances
             vUSDT = <IVBep20>(await ethers.getContractAt("IVBep20", vUSDT_addr));
             USDT = <IERC20>(await ethers.getContractAt("IERC20", USDT_addr));
-            
-            // Deploying adapter
-            adapter = <AdapterVenus>(await deployWithoutParams(ADAPTER_name));
 
             // Impersonating USDT holder
             const holderUSDTaddr = "0x85362633c6ab0bd39aaf73dd8586ac8e8e29c821";
@@ -46,7 +47,7 @@ describe("Venus adapter", function () {
             signers = await ethers.getSigners();
             await signers[5].sendTransaction({
                 to: holderUSDTaddr,
-                value: ethers.utils.parseEther("100")ну
+                value: ethers.utils.parseEther("100")
             });
 
             // Entering markets from the adapter
@@ -64,7 +65,7 @@ describe("Venus adapter", function () {
             const mintAmount = holderBalance.div(2);
 
             await USDT.connect(holderUSDT).approve(adapter.address, holderBalance);
-            await adapter.connect(holderUSDT).mint(mintAmount);
+            await adapter.connect(holderUSDT).mint(mintAmount, USDT_addr, vUSDT_addr);
 
             const balancevUSDT = await vUSDT.balanceOf(holderUSDT.address);
             expect(balancevUSDT).eq(BigNumber.from("460148852"));
@@ -74,7 +75,9 @@ describe("Venus adapter", function () {
             const redeemAmount = BigNumber.from("460148852");
 
             await vUSDT.connect(holderUSDT).approve(adapter.address, redeemAmount);
-            await adapter.connect(holderUSDT).redeem(redeemAmount);
+            await adapter.connect(holderUSDT).redeem(redeemAmount, USDT_addr, vUSDT_addr);
+
+            expect(await USDT.balanceOf(holderUSDT.address)).above(holderBalance);
         });
 
 

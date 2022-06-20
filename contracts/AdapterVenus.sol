@@ -5,59 +5,56 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "./IVbep20.sol";
 import "./IUnitroller.sol";
 
-import "hardhat/console.sol";
-
+/**
+ * @title Adapter for interacting with Venus Protocol
+ * @author Galas' Danil
+ * @dev Implementation of adapter for interaction with Venus Protocol
+ */
 contract AdapterVenus {
-    /**
-    * @dev Address of the unitroller in the BSC mainnet
-    */
-    address private _unitroller = 0xfD36E2c2a6789Db23113685031d7F16329158384;
 
+    address private constant UNITROLLER = 0xfD36E2c2a6789Db23113685031d7F16329158384;
     /**
-     * @dev Address of the vUSDT in the BSC mainnet
+     * @dev Lend some Token to the protocol, get vToken as guarantee of collateral
+     * 
+     * @param mintAmount Amount of `Token` tokens to lend to the protocol
+     * @param Token Address of the token to lend
+     * @param vToken Address of the wrapped token to lend
+     * @notice `vToken` should be wrapped `Token`
      */
-    address private _vUSDT = 0xfD5840Cd36d94D7229439859C0112a4185BC0255;
+    function mint(uint256 mintAmount, address Token, address vToken) external {
+        IERC20(Token).transferFrom(msg.sender, address(this), mintAmount);
+        IERC20(Token).approve(vToken, mintAmount);
 
-    /**
-     * @dev Address of the USDT in the BSC mainnet
-     */
-    address private _USDT = 0x55d398326f99059fF775485246999027B3197955;
+        uint256 balanceBefore = IERC20(vToken).balanceOf(address(this));
+        assert(IVBep20(vToken).mint(mintAmount) == 0);
+        uint256 balanceAfter = IERC20(vToken).balanceOf(address(this));
 
-    function mint(uint256 mintAmount) external {
-        IERC20(_USDT).transferFrom(msg.sender, address(this), mintAmount);
-        IERC20(_USDT).approve(_vUSDT, mintAmount);
-
-        uint256 balanceBefore = IERC20(_vUSDT).balanceOf(address(this));
-        assert(IVBep20(_vUSDT).mint(mintAmount) == 0);
-        uint256 balanceAfter = IERC20(_vUSDT).balanceOf(address(this));
-
-        IERC20(_vUSDT).transfer(msg.sender, balanceAfter - balanceBefore);
+        IERC20(vToken).transfer(msg.sender, balanceAfter - balanceBefore);
     }
 
-    function redeem(uint256 redeemTokens) external {
-        (uint err, uint liquidity, uint shortfall) = IUnitroller(_unitroller).getAccountLiquidity(msg.sender);
-        console.log(liquidity, redeemTokens);
-        require(err == 0, "join the Discord");
-        require(shortfall == 0, "account underwater");    
-        require(liquidity > redeemTokens, "account has excess collateral");  
+    /**
+     * @dev Get back lended tokens
+     *
+     * @param redeemTokens Amount of `vToken` tokens to redeem
+     * @param Token Address of the token to get back 
+     * @param vToken Address of the wrapped token to get back 
+     */
+    function redeem(uint256 redeemTokens, address Token, address vToken) external {
+        IERC20(vToken).transferFrom(msg.sender, address(this), redeemTokens);
+        IERC20(vToken).approve(vToken, redeemTokens);
 
-        IERC20(_vUSDT).transferFrom(msg.sender, address(this), redeemTokens);
-        IERC20(_vUSDT).approve(_vUSDT, redeemTokens);
+        uint256 balanceBefore = IERC20(Token).balanceOf(address(this));
+        assert(IVBep20(vToken).redeem(redeemTokens) == 0);
+        uint256 balanceAfter = IERC20(Token).balanceOf(address(this));
 
-        uint256 balanceBefore = IERC20(_USDT).balanceOf(address(this));
-        assert(IVBep20(_vUSDT).redeem(redeemTokens) == 0);
-        uint256 balanceAfter = IERC20(_USDT).balanceOf(address(this));
-
-        IERC20(_USDT).transfer(msg.sender, balanceAfter - balanceBefore);
+        IERC20(Token).transfer(msg.sender, balanceAfter - balanceBefore);
     }
 
     function enterMarkets(address[] calldata vTokens) external {
-        uint[] memory codes = IUnitroller(_unitroller).enterMarkets(vTokens);
+        uint[] memory codes = IUnitroller(UNITROLLER).enterMarkets(vTokens);
         
         for(uint i; i < codes.length; i++) {
             assert(codes[i] == 0);
         }
-    }
-
-    
+    } 
 }
