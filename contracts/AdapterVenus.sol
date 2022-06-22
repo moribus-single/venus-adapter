@@ -5,8 +5,6 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "./IVbep20.sol";
 import "./IUnitroller.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title Adapter for interacting with Venus Protocol
  * @author Galas' Danil
