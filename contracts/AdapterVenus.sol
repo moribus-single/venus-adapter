@@ -35,7 +35,6 @@ contract AdapterVenus {
         // IERC20(vToken).transfer(msg.sender, balanceAfter - balanceBefore);
 
         (,uint256 liquidity,) = IUnitroller(UNITROLLER).getAccountLiquidity(address(this));
-        console.log(liquidity);
     }
 
     /**
@@ -47,10 +46,9 @@ contract AdapterVenus {
      */
     function redeem(uint256 redeemTokens, address Token, address vToken) external {
         IERC20(vToken).approve(vToken, redeemTokens);
+
         uint256 balanceBefore = IERC20(Token).balanceOf(address(this));
-        uint256 code = IVBep20(vToken).redeem(redeemTokens);
-        console.log(code);
-        assert(code == 0);
+        assert(IVBep20(vToken).redeem(redeemTokens) == 0);
         uint256 balanceAfter = IERC20(Token).balanceOf(address(this));
 
         IERC20(Token).transfer(msg.sender, balanceAfter - balanceBefore);
@@ -84,7 +82,7 @@ contract AdapterVenus {
         uint[] memory codes = IUnitroller(UNITROLLER).enterMarkets(vTokens);
         
         for(uint i; i < codes.length; i++) {
-            console.log("codes[",i,"]=", codes[i]);
+            assert(codes[i] == 0);
         }
     } 
 }
